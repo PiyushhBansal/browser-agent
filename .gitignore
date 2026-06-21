@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Secrets — NEVER commit your API key
+.env
+
+# Build output
+dist/
+
+# Logs
+logs/
+*.log
+
+# Screenshots captured by the agent at runtime
+screenshots/
+
+# OS files
+.DS_Store
