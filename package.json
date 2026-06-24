@@ -1,14 +1,15 @@
 {
   "name": "ai-agent",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/index.ts",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "tsx src/index.ts"
   },
-  "keywords": [],
+  "keywords": ["ai-agent", "playwright", "browser-automation", "llm"],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "An intelligent browser automation agent that fills web forms autonomously using an LLM perceive-think-act loop.",
   "dependencies": {
     "dotenv": "^17.4.2",
     "openai": "^6.42.0",

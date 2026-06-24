@@ -11,7 +11,7 @@ export class Agent {
 
   private messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
 
-  constructor(bot: BrowserController, maxSteps = 15) {
+  constructor(bot: BrowserController, maxSteps = 25) {
     // baseURL lets us point the OpenAI SDK at an OpenAI-compatible endpoint
     // (e.g. Google Gemini's free tier). If unset, it defaults to OpenAI.
     this.openai = new OpenAI({
@@ -35,11 +35,11 @@ export class Agent {
       content: [
         "You are a web automation agent controlling a real browser.",
         "Before each decision you are given a screenshot of the current page.",
-        "Use the tools to accomplish the goal.",
-        "To fill a field: click it at its pixel coordinates, then use send_keys.",
-        "If a field already has text, double_click it to select, then type.",
-        "Scroll if the target element is not visible.",
-        "When BOTH the Name and Description fields are filled, call task_complete.",
+        "The target form is ALREADY on the current page. Do NOT click sidebar links, navigation, or menu items. Do NOT change pages.",
+        "The form has a 'Name' field and a 'Description' field. Both fields exist on this page right now.",
+        "Workflow for EACH field: (1) call find_element with the field name to get exact coordinates, (2) click_on_screen at those coordinates, (3) double_click the same spot to select any existing text, (4) call send_keys to type the value.",
+        "Do NOT guess coordinates. Do NOT scroll randomly — find_element auto-scrolls the field into view for you.",
+        "After typing BOTH the Name and the Description, immediately call task_complete. Do not keep exploring.",
       ].join(" "),
     });
 
@@ -54,12 +54,29 @@ export class Agent {
 
     for (let step = 1; step <= this.maxSteps; step++) {
       logger.info(`--- Step ${step}/${this.maxSteps}: asking the model ---`);
+      await new Promise((r) => setTimeout(r, 8000)); // throttle for free-tier rate limit
 
-      const response = await this.openai.chat.completions.create({
-        model: this.model,
-        messages: this.messages,
-        tools: toolSchemas,
-      });
+      // Ask the model, retrying on 429 (rate limit) with a back-off.
+      let response;
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        try {
+          response = await this.openai.chat.completions.create({
+            model: this.model,
+            messages: this.messages,
+            tools: toolSchemas,
+          });
+          break; // success
+        } catch (err: any) {
+          if (err?.status === 429 && attempt < 4) {
+            const wait = attempt * 15000; // 15s, 30s, 45s
+            logger.warn(`Rate limited (429). Waiting ${wait / 1000}s then retrying...`);
+            await new Promise((r) => setTimeout(r, wait));
+          } else {
+            throw err;
+          }
+        }
+      }
+      if (!response) throw new Error("No response from model after retries.");
 
       const choice = response.choices[0].message;
       this.messages.push(choice); 

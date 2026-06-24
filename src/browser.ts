@@ -7,6 +7,9 @@ import { chromium, Browser, Page } from "playwright";
 export class BrowserController{
     private browser: Browser | null = null;
     private page: Page | null = null;
+    // Counter so every screenshot is saved to a unique numbered file
+    // (step-01.png, step-02.png, ...) instead of overwriting one file.
+    private screenshotCount: number = 0;
 
     async openBrowser(): Promise<void>{
         this.browser = await chromium.launch({headless : false});
@@ -22,9 +25,14 @@ export class BrowserController{
         await this.browser?.close();
     }
 
-    async take_screenshot(path: string="screenshots/current.png"): Promise<Buffer>{
+    async take_screenshot(path?: string): Promise<Buffer>{
         if(!this.page) throw new Error("Browser not open");
-        const buffer = await this.page.screenshot({path, fullPage: false});
+        // Auto-number each screenshot so the full run history is kept:
+        // screenshots/step-01.png, step-02.png, ... (unless a path is given).
+        this.screenshotCount++;
+        const num = String(this.screenshotCount).padStart(2, "0");
+        const savePath = path ?? `screenshots/step-${num}.png`;
+        const buffer = await this.page.screenshot({path: savePath, fullPage: false});
         return buffer;
     }
 

@@ -20,6 +20,20 @@ export const toolSchemas: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     {
         type:"function",
         function:{
+            name:"find_element",
+            description:"Locate a form field or element by its label, placeholder, name, or visible text. Automatically scrolls it into view and returns its center (x,y) pixel coordinates. ALWAYS use this to locate a field before clicking, instead of guessing coordinates.",
+            parameters:{
+                type:"object",
+                properties:{
+                    query:{type:"string",description:"What to find, e.g. 'Title', 'Description', or placeholder text."},
+                },
+                required:["query"],
+            }
+        }
+    },
+    {
+        type:"function",
+        function:{
             name:"click_on_screen",
             description:"click at pixel coordinate (x,y) on the visible page. Use the screenshot to judge where to click. ",
             parameters:{
@@ -111,6 +125,13 @@ export async function executeTool(
       logger.action(`navigate_to_url -> ${args.url}`);
       await bot.navigateToUrl(args.url);
       return `Navigated to ${args.url}.`;
+
+    case "find_element": {
+      logger.action(`find_element -> "${args.query}"`);
+      const pos = await bot.findElement(args.query);
+      if (!pos) return `Element "${args.query}" not found. Try a different description.`;
+      return `Found "${args.query}" at coordinates (${Math.round(pos.x)}, ${Math.round(pos.y)}). Now click_on_screen there, then send_keys.`;
+    }
 
     case "click_on_screen":
         logger.action(`click_on_screen-> (${args.x},${args.y})`);
